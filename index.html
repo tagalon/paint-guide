@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Multiselect</title>
+    <script src="https://unpkg.com/@streamlit/component-lib@latest"></script>
+    <style>
+        .search-container {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #search-input {
+      margin-bottom: 10px;
+    }
+    
+    .multiselect-container {
+      display: flex;
+      flex-wrap: wrap;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    
+    .chosen-colors-container {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .multiselect-option, .chosen-color {
+      display: inline-block;
+      padding: 5px;
+      margin: 2px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      justify-content: space-between; /* Space between text and "x" */
+      font-size: 10px;
+      width: 200px;
+      height: 40px;
+    }
+    
+    .multiselect-option:hover, .chosen-color:hover {
+      background-color: #f0f0f0;
+    }
+    </style>
+</head>
+<body>
+
+<div class="search-container">
+    <input type="text" id="search-input" placeholder="Search color">
+    <div class="chosen-colors-container" id="chosen-colors-container">
+        <!-- Chosen colors will be displayed here -->
+    </div>
+</div>
+<div class="multiselect-container" id="multiselect-container">
+    <!-- JavaScript will populate options here -->
+</div>
+
+<script>
+    const {Streamlit, ComponentMessageType} = window.streamlitComponent;
+
+    let optionsWithColors = Streamlit.getComponentContext().args["optionsWithColors"];
+    const chosenColors = [];
+
+    function populateOptions() {
+        const container = document.getElementById("multiselect-container");
+        container.innerHTML = ""; // Clear existing options
+
+        optionsWithColors
+            .filter(option => !chosenColors.some(chosen => chosen.Name === option.Name))
+            .forEach(option => {
+                const optionElem = document.createElement("div");
+                optionElem.className = "multiselect-option";
+                optionElem.textContent = option.Name;
+
+                const rgb = option.RGB.join(", ");
+                optionElem.style.backgroundColor = `rgb(${rgb})`;
+
+                const brightness = (option.RGB[0] * 299 + option.RGB[1] * 587 + option.RGB[2] * 114) / 1000;
+                const textColor = brightness > 128 ? "black" : "white";
+                optionElem.style.color = textColor;
+
+                optionElem.addEventListener("click", () => addChosenColor(option));
+                container.appendChild(optionElem);
+            });
+    }
+
+    function addChosenColor(color) {
+        if (!chosenColors.some(c => c.Name === color.Name)) {
+            chosenColors.push(color);
+            updateChosenColors();
+            populateOptions(); // Repopulate options to remove the chosen color
+
+            Streamlit.setComponentValue(chosenColors);
+        }
+    }
+
+    function removeChosenColor(index) {
+        chosenColors.splice(index, 1);
+        updateChosenColors();
+        populateOptions(); // Repopulate options to add back the removed color
+
+        Streamlit.setComponentValue(chosenColors);
+    }
+
+    function updateChosenColors() {
+        const container = document.getElementById("chosen-colors-container");
+        container.innerHTML = "";
+
+        chosenColors.forEach((color, index) => {
+            const chosenColorElem = document.createElement("div");
+            chosenColorElem.className = "chosen-color";
+
+            const colorNameElem = document.createElement("span");
+            colorNameElem.textContent = color.Name;
+
+            const rgb = color.RGB.join(", ");
+            chosenColorElem.style.backgroundColor = `rgb(${rgb})`;
+
+            const brightness = (color.RGB[0] * 299 + color.RGB[1] * 587 + color.RGB[2] * 114) / 1000;
+            const textColor = brightness > 128 ? "black" : "white";
+            chosenColorElem.style.color = textColor;
+
+            const removeButtonElem = document.createElement("span");
+            removeButtonElem.textContent = "x";
+            removeButtonElem.style.cursor = "pointer";
+            removeButtonElem.addEventListener("click", () => removeChosenColor(index));
+
+            chosenColorElem.appendChild(colorNameElem);
+            chosenColorElem.appendChild(removeButtonElem);
+
+            container.appendChild(chosenColorElem);
+        });
+    }
+
+    function updateMultiselectSearch(searchQuery) {
+        const container = document.getElementById("multiselect-container");
+        container.innerHTML = "";
+
+        optionsWithColors
+            .filter(option => !chosenColors.some(chosen => chosen.Name === option.Name))
+            .filter(option => option.Name.toLowerCase().includes(searchQuery.toLowerCase()))
+            .forEach(option => {
+                const optionElem = document.createElement("div");
+                optionElem.className = "multiselect-option";
+                optionElem.textContent = option.Name;
+
+                const rgb = option.RGB.join(", ");
+                optionElem.style.backgroundColor = `rgb(${rgb})`;
+
+                const brightness = (option.RGB[0] * 299 + option.RGB[1] * 587 + option.RGB[2] * 114) / 1000;
+                const textColor = brightness > 128 ? "black" : "white";
+                optionElem.style.color = textColor;
+
+                optionElem.addEventListener("click", () => addChosenColor(option));
+                container.appendChild(optionElem);
+            });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        populateOptions();
+
+        document.getElementById("search-input").addEventListener("input", event => {
+            const searchQuery = event.target.value.trim();
+            updateMultiselectSearch(searchQuery);
+        });
+
+        updateChosenColors();
+    });
+</script>
+</body>
+</html>
